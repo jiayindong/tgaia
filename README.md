@@ -157,9 +157,3 @@ Posterior on Companion Parameters
 - [Astrometric modeling (Perryman+ 1997)](https://www.aanda.org/articles/aa/pdf/1997/08/ds1309.pdf)
 - [PyMC documentation](https://www.pymc.io/projects/docs/en/stable/)
 - [Stan model example](stan_codes/ruwe_ecc_dark.py)
-
----
-
-## **Contact**
-
-- Please list team members and module responsibilities here for future reference.
