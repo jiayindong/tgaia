@@ -1,17 +1,3 @@
-def estimate_unit_weight_error(t_obs,scan_angle,parallax_factor,g_mag,ra_diffs,dec_diffs):
-	A = np.column_stack([np.sin(scan_angle),np.cos(scan_angle),parallax_factor,t_obs*np.sin(scan_angle),t_obs*np.cos(scan_angle)])
-	al_positions = ra_diffs*np.sin(scan_angle)+dec_diffs*np.cos(scan_angle)
-	al_errors = sigma_ast(g_mag)
-	C = np.linalg.solve(A.T @ A, np.eye(5))
-	ACAT = A @ C @ A.T
-	R = al_positions.T - (al_positions.T) @ ACAT
-	T = len(t_obs)
-	uwe = 0
-	for ii in range(T):
-		uwe += ((R[ii]/al_errors)**2) / (T - 5)
-	uwe = np.sqrt(uwe)
-	return uwe
-
 t_obs = find_obs(0)
 scan_angle = find_obs(1)
 parallax_factor = find_obs(2)
