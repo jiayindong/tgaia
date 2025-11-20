@@ -1,8 +1,3 @@
-t_obs = find_obs(0)
-scan_angle = find_obs(1)
-parallax_factor = find_obs(2)
-ra_diffs = radec_diff(0)
-dec_diffs = radec_diff(1)
 def ruwe(t_obs, scan_angle, parallax_factor, g_mag, ra_diffs, dec_diffs):
     # A matrix (N,5), astrometric signal
     A = pt.stack([
