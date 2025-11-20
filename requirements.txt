@@ -1,0 +1,3 @@
+numpy==1.26.0
+astroquery==1.2.4
+gaiaunlimited==0.3.0
