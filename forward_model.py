@@ -65,11 +65,105 @@ def component_positions(x, y, q, l):
     yp = y * abs(q - l) / ((1 + l) * (1 + q))
     return (x1, y1, x2, y2, xp, yp)
 
+def thiele_innes_coefficients(semimajor, inclination, Omega, omega):
+    """Calculate Thiele-Innes coefficients A, B, F, G
+    
+    These coefficients transform orbital coordinates to equatorial coordinates
+    and are independent of time, making them useful for inference.
+    
+    inputs:
+      semimajor    : semi-major axis (mas)
+      inclination  : orbital inclination (degrees)
+      Omega        : longitude of ascending node (degrees)
+      omega        : argument of periapsis (degrees)
+    
+    returns:
+      A, B, F, G   : Thiele-Innes coefficients (mas)
+    """
+    i_rad = inclination * np.pi / 180
+    Omega_rad = Omega * np.pi / 180
+    omega_rad = omega * np.pi / 180
+    A = semimajor * (np.cos(omega_rad) * np.cos(Omega_rad) - np.sin(omega_rad) * np.sin(Omega_rad) * np.cos(i_rad))
+    B = semimajor * (np.cos(omega_rad) * np.sin(Omega_rad) + np.sin(omega_rad) * np.cos(Omega_rad) * np.cos(i_rad))
+    F = semimajor * (-np.sin(omega_rad) * np.cos(Omega_rad) - np.cos(omega_rad) * np.sin(Omega_rad) * np.cos(i_rad))
+    G = semimajor * (-np.sin(omega_rad) * np.sin(Omega_rad) + np.cos(omega_rad) * np.cos(Omega_rad) * np.cos(i_rad))
+    return A, B, F, G
+
+
+def eccentric_anomaly_from_mean(t, period, eccentricity, t_p):
+    """Calculate eccentric anomaly E from mean anomaly using Kepler's equation
+    
+    inputs:
+      t            : time(s) (years)
+      period       : orbital period (years)
+      eccentricity : orbital eccentricity
+      t_p          : time of periastron (years)
+    
+    returns:
+      E            : eccentric anomaly (radians)
+    """
+    mean_anomaly = (((t - t_p) / period) * 2 * np.pi) % (2 * np.pi)
+    steps = 6
+    E = copy.copy(mean_anomaly)
+    for _ in range(steps):
+        E -= (E - eccentricity * np.sin(E) - mean_anomaly) / (1 - eccentricity * np.cos(E))
+    return E
+
+
+def orbital_coordinates(t, period, eccentricity, t_p):
+    """Calculate X, Y orbital coordinates (equations 7-8 from literature)
+    
+    inputs:
+      t            : time(s) (years)
+      period       : orbital period (years)
+      eccentricity : orbital eccentricity
+      t_p          : time of periastron (years)
+    
+    returns:
+      X, Y         : orbital coordinates (dimensionless)
+    """
+    E = eccentric_anomaly_from_mean(t, period, eccentricity, t_p)
+    X = np.cos(E) - eccentricity
+    Y = np.sqrt(1 - eccentricity**2) * np.sin(E)
+    return X, Y
+
+
 def radec_diff(t, semimajor, period, q, l, eccentricity, inclination, Omega, omega, t_p):
-    """Calculate difference between photocentre and barycenter on the sky"""
-    (x, y) = projected_position(t, semimajor, period, eccentricity, inclination, Omega, omega, t_p)
-    (x1, y1, x2, y2, xp, yp) = component_positions(x, y, q, l)
-    return (xp, yp)
+    """Calculate difference between photocentre and barycenter on the sky using Thiele-Innes coefficients
+    
+    This uses the proper formalism from astrometric binary modeling (e.g., Pourbaix et al. 2022):
+    ΔRA = (B*X + G*Y) * (luminosity weighting)
+    ΔDec = (A*X + F*Y) * (luminosity weighting)
+    
+    inputs:
+      t            : observation times (years)
+      semimajor    : semi-major axis (mas)
+      period       : orbital period (years)
+      q            : mass ratio (m_planet/m_star)
+      l            : luminosity ratio (planet/star)
+      eccentricity : orbital eccentricity
+      inclination  : orbital inclination (degrees)
+      Omega        : longitude of ascending node (degrees)
+      omega        : argument of periapsis (degrees)
+      t_p          : time of periastron (years)
+    
+    returns:
+      ra_diff, dec_diff : photocentre offsets (mas)
+    """
+    # Calculate Thiele-Innes coefficients (time-independent)
+    A, B, F, G = thiele_innes_coefficients(semimajor, inclination, Omega, omega)
+    
+    # Calculate orbital coordinates (time-dependent)
+    X, Y = orbital_coordinates(t, period, eccentricity, t_p)
+    
+    # Apply luminosity weighting to account for photocenter shift
+    # The photocentre is offset by the mass and luminosity ratios
+    luminosity_weight = abs(q - l) / ((1 + l) * (1 + q))
+    
+    # Calculate RA and Dec differences using Thiele-Innes formalism
+    ra_diff = (B * X + G * Y) * luminosity_weight
+    dec_diff = (A * X + F * Y) * luminosity_weight
+    return ra_diff, dec_diff
 
 def gaia_position(t):
     """3D position of Gaia relative to Sun, in celestial coordinates (AU)"""
