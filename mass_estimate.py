@@ -1,3 +1,4 @@
+#mass_estimate.py
 import pymc as pm
 import numpy as np
 import arviz as az
@@ -40,4 +41,5 @@ def getMassFromId(source_id, num_samples=100, rng_seed=0, Gmag_err=0.01):
     mf.run_hmc(rng_key, linear_age=True, flat_age_marginal=False, nodata=False)
     samples = mf.samples
     mass_median = float(np.median(np.array(samples['mass']).ravel()))
+    mass_median = mass_median * 1047.3486
     return mass_median
